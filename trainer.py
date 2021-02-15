@@ -1,5 +1,6 @@
 import copy
 import logging
+import argparse
 
 import torch
 from torch import nn
@@ -13,7 +14,7 @@ logger = utils.get_logger('trainer')
 
 
 def run_training_loop(model, optimizer, scheduler, device, train_loader, test_loader,
-                      criterion_classification, criterion_localization, epochs=50):
+                      criterion_classification, criterion_localization, epochs):
     logger.info('Start training')
     for epoch in range(epochs):
         logger.debug(f'Epoch {epoch}')
@@ -141,11 +142,14 @@ def start_training(train_image_folder: str, train_csv_path: str, test_image_fold
 
 
 if __name__ == '__main__':
+    parser = utils.get_args_parser()
+    args = parser.parse_args()
+
     start_training(
-        train_image_folder='../data/train',
-        train_csv_path='../data/train.csv',
-        test_image_folder='../data/test',
-        test_csv_path='../data/test.csv',
-        model_path='../model_new.pt',
-        epochs=1,
+        train_image_folder=args.train_image_folder,
+        train_csv_path=args.train_csv_path,
+        test_image_folder=args.test_image_folder,
+        test_csv_path=args.test_csv_path,
+        model_path=args.model_path,
+        epochs=args.epochs,
     )

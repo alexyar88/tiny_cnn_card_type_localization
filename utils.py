@@ -1,5 +1,7 @@
 import logging
 import logging.config
+import argparse
+
 import yaml
 
 
@@ -9,6 +11,17 @@ def get_logger(logger_name):
 
     logging.config.dictConfig(log_cfg)
     return logging.getLogger(logger_name)
+
+
+def get_args_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--train-image-folder", type=str, default='../data/train')
+    parser.add_argument("--train-csv-path", type=str, default='../data/train.csv')
+    parser.add_argument("--test-image-folder", type=str, default='../data/test')
+    parser.add_argument("--test-csv-path", type=str, default='../data/test.csv')
+    parser.add_argument("--model-path", type=str, default='../model_new.pt')
+    parser.add_argument("--epochs", type=int, default=2)
+    return parser
 
 
 def get_iou(bb1, bb2):
