@@ -1,0 +1,4 @@
+*.log
+# Project exclude paths
+/venv/
+.idea
