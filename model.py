@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 
 
@@ -11,10 +12,10 @@ class Block(nn.Module):
         self.relu = nn.LeakyReLU()
         self.maxpool = nn.MaxPool2d(kernel_size=2)
 
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(out_channels, affine=True)
 
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(out_channels, affine=True)
 
     def forward(self, x):
@@ -61,7 +62,7 @@ class TinyNet(nn.Module):
         x = self.b4(x)
         x = self.b5(x)
         x = self.avgpool(x)
-        x = x.view(x.size()[0], -1)
+        x = torch.flatten(x, start_dim=1)
         logits = self.fc_logits(x)
         bbox = self.fc_bbox(x)
         return logits, bbox

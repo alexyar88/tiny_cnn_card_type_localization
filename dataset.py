@@ -46,8 +46,8 @@ class CardDataset(torch.utils.data.Dataset):
         label = self.class_to_id[row['label_name']]
         xmin_rel = row['rect_left'] / row['image_width']
         xmax_rel = (row['rect_left'] + row['rect_width']) / row['image_width']
-        ymin_rel = (row['rect_top'] - row['rect_height']) / row['image_height']
-        ymax_rel = row['rect_top'] / row['image_height']
+        ymin_rel = row['rect_top'] / row['image_height']
+        ymax_rel = (row['rect_top']  + row['rect_height']) / row['image_height']
 
         return img, label, (xmin_rel, xmax_rel, ymin_rel, ymax_rel)
 

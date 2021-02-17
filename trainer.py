@@ -1,13 +1,16 @@
 import copy
-import logging
 import argparse
+from glob import glob
+import os
 
 import torch
 from torch import nn
-import torchvision.transforms as transforms
+
+from PIL import Image
 
 from model import TinyNet
 from dataset import CardDataset
+from transforms import train_transform, test_transform
 import utils
 
 logger = utils.get_logger('trainer')
@@ -17,7 +20,7 @@ def run_training_loop(model, optimizer, scheduler, device, train_loader, test_lo
                       criterion_classification, criterion_localization, epochs):
     logger.info('Start training')
     for epoch in range(epochs):
-        logger.debug(f'Epoch {epoch}')
+        logger.debug(f'Epoch {epoch + 1}')
 
         model.train()
         running_loss_ce = 0.0
@@ -76,22 +79,8 @@ def run_training_loop(model, optimizer, scheduler, device, train_loader, test_lo
 
 
 def start_training(train_image_folder: str, train_csv_path: str, test_image_folder: str, test_csv_path: str,
-                   model_path: str, epochs=50, image_size=(112, 184), use_gpu=False) -> None:
+                   model_path: str, epochs=50, use_gpu=False) -> None:
     model = TinyNet()
-
-    train_transform = transforms.Compose([
-        transforms.RandomAffine(degrees=3),
-        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=1, hue=0.1),
-        transforms.Resize(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
-
-    test_transform = transforms.Compose([
-        transforms.Resize(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
 
     train_dataset = CardDataset(
         image_folder=train_image_folder,
@@ -109,20 +98,20 @@ def start_training(train_image_folder: str, train_csv_path: str, test_image_fold
         train_dataset,
         batch_size=32,
         shuffle=True,
-        num_workers=4
+        num_workers=7
     )
 
     test_loader = torch.utils.data.DataLoader(
         test_dataset,
         batch_size=1,
         shuffle=False,
-        num_workers=4
+        num_workers=7
     )
 
     criterion_classification = nn.CrossEntropyLoss()
     criterion_localization = nn.SmoothL1Loss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0003)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.2)
     device = torch.device('cuda') if use_gpu else torch.device('cpu')
 
     run_training_loop(
@@ -139,17 +128,61 @@ def start_training(train_image_folder: str, train_csv_path: str, test_image_fold
 
     model_half = copy.deepcopy(model).half()
     torch.save(model_half.state_dict(), model_path)
+    logger.info(f'Model has successfully saved: {model_path}')
+
+
+def run_inference(model_half_path, test_image_folder, result_folder):
+    model = TinyNet()
+    model.load_state_dict(torch.load(model_half_path))
+    model = model.float()
+
+    test_folder_pattern = os.path.join(test_image_folder, '*')
+    file_paths = sorted(glob(test_folder_pattern))
+
+    for path in file_paths:
+        img = Image.open(path).convert('RGBA').convert('RGB')
+        filename = path.split('/')[-1]
+        logger.debug(f'Processing: {filename}')
+
+        x = test_transform(img)
+        x = x.unsqueeze(0)
+        logits, bbox_pred = model(x)
+        label = logits.cpu().detach()[0].numpy().argmax()
+        text = 'visa' if label == 1 else 'mastercard'
+
+        bbox_pred = bbox_pred.cpu().detach()[0].numpy()
+        img_bbox = utils.get_image_with_bbox_and_text(img, bbox_pred, text)
+
+        result_path = os.path.join(result_folder, filename)
+        img_bbox.save(result_path)
 
 
 if __name__ == '__main__':
-    parser = utils.get_args_parser()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--skip-training", type=bool, default=True)
+    parser.add_argument("--train-image-folder", type=str, default='../data/train')
+    parser.add_argument("--train-csv-path", type=str, default='../data/train.csv')
+    parser.add_argument("--test-image-folder", type=str, default='../data/test')
+    parser.add_argument("--test-csv-path", type=str, default='../data/test.csv')
+    parser.add_argument("--result-folder", type=str, default='../result')
+    parser.add_argument("--model-path", type=str, default='../model_half.pt')
+    parser.add_argument("--epochs", type=int, default=60)
     args = parser.parse_args()
 
-    start_training(
-        train_image_folder=args.train_image_folder,
-        train_csv_path=args.train_csv_path,
+    if not args.skip_training:
+        start_training(
+            train_image_folder=args.train_image_folder,
+            train_csv_path=args.train_csv_path,
+            test_image_folder=args.test_image_folder,
+            test_csv_path=args.test_csv_path,
+            model_path=args.model_path,
+            epochs=args.epochs,
+        )
+    else:
+        logger.info(f'Skip training. Model: {args.model_path}')
+
+    run_inference(
+        model_half_path=args.model_path,
         test_image_folder=args.test_image_folder,
-        test_csv_path=args.test_csv_path,
-        model_path=args.model_path,
-        epochs=args.epochs,
+        result_folder=args.result_folder
     )

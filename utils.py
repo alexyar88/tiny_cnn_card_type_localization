@@ -1,6 +1,7 @@
 import logging
 import logging.config
-import argparse
+import copy
+from PIL import ImageDraw, ImageFont
 
 import yaml
 
@@ -11,17 +12,6 @@ def get_logger(logger_name):
 
     logging.config.dictConfig(log_cfg)
     return logging.getLogger(logger_name)
-
-
-def get_args_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--train-image-folder", type=str, default='../data/train')
-    parser.add_argument("--train-csv-path", type=str, default='../data/train.csv')
-    parser.add_argument("--test-image-folder", type=str, default='../data/test')
-    parser.add_argument("--test-csv-path", type=str, default='../data/test.csv')
-    parser.add_argument("--model-path", type=str, default='../model_new.pt')
-    parser.add_argument("--epochs", type=int, default=2)
-    return parser
 
 
 def get_iou(bb1, bb2):
@@ -42,3 +32,24 @@ def get_iou(bb1, bb2):
 
     iou = abs(intersection_area) / float(abs(bb1_area) + abs(bb2_area) - abs(intersection_area))
     return iou
+
+
+def get_image_with_bbox_and_text(img, bbox, text):
+    img = copy.deepcopy(img)
+    img = img.resize((184 * 2, 112 * 2))
+
+    xmin, xmax, ymin, ymax = bbox
+
+    x0 = (xmin) * img.width
+    y0 = (ymin) * img.height
+
+    x1 = (xmax) * img.width
+    y1 = (ymax) * img.height
+
+    draw = ImageDraw.Draw(img)
+    bbox_abs = [(x0, y0), (x1, y1)]
+
+    draw.rectangle(bbox_abs, fill=None, outline='red', width=2)
+    font = ImageFont.truetype('Helvetica', size=16)
+    draw.text((x0, y0 - 16), text, fill='blue', font=font)
+    return img
