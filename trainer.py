@@ -139,6 +139,9 @@ def run_inference(model_half_path, test_image_folder, result_folder):
     test_folder_pattern = os.path.join(test_image_folder, '*')
     file_paths = sorted(glob(test_folder_pattern))
 
+    if not os.path.exists(result_folder):
+        os.makedirs(result_folder)
+
     for path in file_paths:
         img = Image.open(path).convert('RGBA').convert('RGB')
         filename = path.split('/')[-1]
@@ -165,7 +168,7 @@ if __name__ == '__main__':
     parser.add_argument("--test-image-folder", type=str, default='../data/test')
     parser.add_argument("--test-csv-path", type=str, default='../data/test.csv')
     parser.add_argument("--result-folder", type=str, default='../result')
-    parser.add_argument("--model-path", type=str, default='../model_half.pt')
+    parser.add_argument("--model-path", type=str, default='model_half.pt')
     parser.add_argument("--epochs", type=int, default=60)
     args = parser.parse_args()
 

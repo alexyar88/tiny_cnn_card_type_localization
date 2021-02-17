@@ -2,4 +2,3 @@
 # Project exclude paths
 /venv/
 .idea
-*.pt
