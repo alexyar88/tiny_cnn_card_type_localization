@@ -180,7 +180,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if not args.skip_training:
+    if args.skip_training:
+        logger.info(f'Skip training. Using model: {args.inference_model_path}')
+    else:
         start_training(
             train_image_folder=args.train_image_folder,
             train_csv_path=args.train_csv_path,
@@ -190,8 +192,6 @@ if __name__ == '__main__':
             model_half_path=args.model_half_path,
             epochs=args.epochs,
         )
-    else:
-        logger.info(f'Skip training. Using model: {args.inference_model_path}')
 
     run_inference(
         model_path=args.inference_model_path,
