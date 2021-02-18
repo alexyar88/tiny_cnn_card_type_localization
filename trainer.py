@@ -78,8 +78,8 @@ def run_training_loop(model, optimizer, scheduler, device, train_loader, test_lo
         logger.info(f'Test -- Accuracy: {accuracy:.4f}, IoU: {iou:.4f}')
 
 
-def start_training(train_image_folder: str, train_csv_path: str, test_image_folder: str, test_csv_path: str,
-                   model_path: str, epochs=50, use_gpu=False) -> None:
+def start_training(train_image_folder, train_csv_path, test_image_folder, test_csv_path,
+                   model_full_path, model_half_path, epochs=50, use_gpu=False) -> None:
     model = TinyNet()
 
     train_dataset = CardDataset(
@@ -126,14 +126,17 @@ def start_training(train_image_folder: str, train_csv_path: str, test_image_fold
         epochs=epochs,
     )
 
+    torch.save(model.state_dict(), model_full_path)
+    logger.info(f'Model fp32 has successfully saved: {model_full_path}')
+
     model_half = copy.deepcopy(model).half()
-    torch.save(model_half.state_dict(), model_path)
-    logger.info(f'Model has successfully saved: {model_path}')
+    torch.save(model_half.state_dict(), model_half_path)
+    logger.info(f'Model fp16 has successfully saved: {model_half_path}')
 
 
-def run_inference(model_half_path, test_image_folder, result_folder):
+def run_inference(model_path, test_image_folder, result_folder):
     model = TinyNet()
-    model.load_state_dict(torch.load(model_half_path))
+    model.load_state_dict(torch.load(model_path))
     model = model.float()
 
     test_folder_pattern = os.path.join(test_image_folder, '*')
@@ -165,11 +168,16 @@ if __name__ == '__main__':
     parser.add_argument("--skip-training", type=bool, default=True)
     parser.add_argument("--train-image-folder", type=str, default='../data/train')
     parser.add_argument("--train-csv-path", type=str, default='../data/train.csv')
+    parser.add_argument("--epochs", type=int, default=60)
+
     parser.add_argument("--test-image-folder", type=str, default='../data/test')
     parser.add_argument("--test-csv-path", type=str, default='../data/test.csv')
     parser.add_argument("--result-folder", type=str, default='../result')
-    parser.add_argument("--model-path", type=str, default='model_half.pt')
-    parser.add_argument("--epochs", type=int, default=60)
+
+    parser.add_argument("--model-full-path", type=str, default='models/model.pt')
+    parser.add_argument("--model-half-path", type=str, default='models/model_half.pt')
+    parser.add_argument("--inference-model-path", type=str, default='models/model_half.pt')
+
     args = parser.parse_args()
 
     if not args.skip_training:
@@ -178,14 +186,15 @@ if __name__ == '__main__':
             train_csv_path=args.train_csv_path,
             test_image_folder=args.test_image_folder,
             test_csv_path=args.test_csv_path,
-            model_path=args.model_path,
+            model_full_path=args.model_full_path,
+            model_half_path=args.model_half_path,
             epochs=args.epochs,
         )
     else:
-        logger.info(f'Skip training. Model: {args.model_path}')
+        logger.info(f'Skip training. Using model: {args.inference_model_path}')
 
     run_inference(
-        model_half_path=args.model_path,
+        model_path=args.inference_model_path,
         test_image_folder=args.test_image_folder,
         result_folder=args.result_folder
     )

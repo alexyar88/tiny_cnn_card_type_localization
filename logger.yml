@@ -19,7 +19,7 @@ handlers:
   file_handler:
     class: logging.FileHandler
     level: DEBUG
-    filename: logger.log
+    filename: history.log
     formatter: extended
 
 loggers:
