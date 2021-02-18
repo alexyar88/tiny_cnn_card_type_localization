@@ -1,7 +1,6 @@
 version: 1
 
 formatters:
-
   simple:
     format: "%(asctime)s - %(message)s"
     datefmt: "%H:%M:%S"
